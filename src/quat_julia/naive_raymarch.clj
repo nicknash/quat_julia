@@ -13,9 +13,6 @@
         (recur (inc iter) (vec-add (quat-mul z z) c)) 
         false))))
 
-(defn inside-julia? [q c max-iterations]
-  (not (outside-julia? q c max-iterations)))
-
 ; Naive Ray marching
 
 (defn ray-march-forward [outside? initial-z max-z num-steps]
