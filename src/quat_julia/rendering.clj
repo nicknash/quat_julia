@@ -27,28 +27,25 @@
         spec-exp (Math/pow clamped-specular shininess)]
     (vec-add (vec-scale clamped-diffuse diffuse) (vec-scale spec-exp specular))))
 
+(defn get-buf-vector [buf-pos buf-pos-to-viewport buf-getter size]
+  (let [before (clamp-range (- buf-pos 1) size)
+        after (clamp-range (+ buf-pos 1) size)
+        vp-before (buf-pos-to-viewport before)
+        vp-after (buf-pos-to-viewport after)
+        buf-before (buf-getter before)
+        buf-after (buf-getter after)]    
+        [(- vp-before vp-after) (- buf-before buf-after)]))
+
+
 (defn get-normal 
   "Compute a normal to the z-buffer at buf-x, buf-y by differencing neighbours"
                  [buf-x buf-y 
                   x-buffer-to-viewport y-buffer-to-viewport 
                   zbuffer size]
-  (let [b-left  (clamp-range (- buf-x 1) size)
-        b-right (clamp-range (+ buf-x 1) size)
-        vp-left (x-buffer-to-viewport b-left)
-        vp-right (x-buffer-to-viewport b-right)
-        zbuf-left (aget zbuffer b-left buf-y)
-        zbuf-right (aget zbuffer b-right buf-y)
-        u [(- vp-left vp-right) 0 (- zbuf-left zbuf-right)]
-        
-        b-above (clamp-range (- buf-y 1) size)
-        b-below (clamp-range (+ buf-y 1) size)
-        vp-above (y-buffer-to-viewport b-above)
-        vp-below (y-buffer-to-viewport b-below)
-        zbuf-below (aget zbuffer buf-x b-below)
-        zbuf-above (aget zbuffer buf-x b-above)
-        v [0 (- vp-below vp-above) (- zbuf-below zbuf-above)]]
-    (vec-normalize (vec-cross-3d u v))))
-   
+  (let [u (get-buf-vector buf-x x-buffer-to-viewport #(aget zbuffer % buf-y) size)
+        v (get-buf-vector buf-y y-buffer-to-viewport #(aget zbuffer buf-x %) size)]
+       (vec-normalize (vec-cross-3d (vector (u 0) 0 (v 1)) (vector 0 (v 0) (v 1))))))
+  
 (defn depth-cue [z min-z max-z] (- 1 (/ (- z min-z) (- max-z min-z))))
     
 (defn get-color [buf-x buf-y x-buffer-to-viewport y-buffer-to-viewport 
@@ -62,10 +59,10 @@
             light-vec (vec-scale (depth-cue z min-z max-z)
                                  (vec-add (phong-light normal (vec-normalize [0 0 -1])
                                                        (vec-normalize [-0.2 -0.1 -1])
-                                                       [0.3 0.5 0.4] [0.1 0.7 0.8] 15)                
+                                                       [0.5 0.5 0.4] [0.5 0.7 0.3] 15)                
                                           (phong-light normal (vec-normalize [0 0 -1]) 
                                                        (vec-normalize [0.1 0.1 -1]) 
-                                                       [0.05 0.05 0.2] [0.1 0.1 0.3] 50)))]
+                                                       [0.05 0.2 0.05] [0.1 0.3 0.1] 50)))]
         (vec (map #(clamp-range % 255) (vec-scale 256 light-vec))))
       [0 0 0])))
   
